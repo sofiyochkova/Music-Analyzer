@@ -1,0 +1,10 @@
+body
+{
+    background-color: cornsilk;
+}
+
+/* TODO: enable only if custom_dates is selected, maybe in js */
+#custom_dates
+{
+    display: none;
+}

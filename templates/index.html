@@ -1,0 +1,52 @@
+{% extends "base_template.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{url_for('static', filename='main_style.css')}}">
+{% endblock %}
+
+{% block content %}
+    <h1>Music Analyzer Project</h1>
+    <h2>Welcome!</h2>
+    
+    <div id="lastfm_form">
+        <p>Enter <a href="https://www.last.fm/home">Last.fm</a> username: </p>
+        <form action="/validate_data">
+            <label for="username">Username: </label>
+            <input name="username" type="text" required>
+
+            <label for="time_period">Time period: </label>
+            <select id="time" name="time_period" required>
+                <option value="7day">7 days</option>
+                <option value="1month">1 month</option>
+                <option value="3month">3 months</option>
+                <option value="6month">6 months</option>
+                <option value="12month">1 year</option>
+                <option value="overall">Overall</option>
+                <option value="custom">Custom</option>
+            </select>
+
+            <div id="custom_dates">
+                <label for="start_date">Start date: </label>
+                <input name="start_date" type="date">
+
+                <label for="end_date">End date: </label>
+                <input name="end_date" type="date">
+            </div>
+            <input type="submit" value="Submit">
+        </form>
+
+        <!-- if account not found or maybe invalid dates -->
+        {% if message %}
+        <h2>{{ message }}</h2>
+        {% endif %}
+    </div>
+
+    <div>
+        <p>Upload Spotify user data here: </p>
+        <form action="/analyze_spotify_data">
+            <input type="file" multiple>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
+    
+{% endblock %}
