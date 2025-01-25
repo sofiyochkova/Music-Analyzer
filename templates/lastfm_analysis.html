@@ -1,10 +1,12 @@
-{% extends base_template %}
+{% extends "base_template.html" %}
 
 {% block style %}
     <link rel="stylesheet" href="{{ url_for('static', filename='lastfm_analysis.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='main_style.css') }}">
 {% endblock %}
 
 {% block content %}
+    <h1>Last.fm stats for {{username}}: </h1>
     
 {% endblock %}
 

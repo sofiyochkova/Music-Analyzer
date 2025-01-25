@@ -1,10 +1,47 @@
+*
+{
+    font-family:'Lora', serif;
+}
+
 body
 {
-    background-color: cornsilk;
+    background-color: #faded9;
+    color: #203287;
+    font-size: 13pt;
+}
+
+a
+{
+    text-decoration: none;
+    color: #d92323;
 }
 
 /* TODO: enable only if custom_dates is selected, maybe in js */
 #custom_dates
 {
     display: none;
+}
+
+input
+{
+    display: block;
+    margin: 20px;
+}
+
+input[type="submit"]
+{
+    padding: 20px;
+    border-style: none;
+    background-color: #f28282;
+    font-size: 12.5pt;
+}
+
+input[type="submit"]:hover
+{
+    cursor: pointer;
+}
+
+#lastfm_form, #spotify_form
+{
+    display: inline-block;
 }
