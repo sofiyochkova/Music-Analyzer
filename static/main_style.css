@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
 *
 {
     font-family:'Lora', serif;
@@ -7,7 +9,6 @@ body
 {
     background-color: #faded9;
     color: #203287;
-    font-size: 13pt;
 }
 
 a
@@ -16,32 +17,35 @@ a
     color: #d92323;
 }
 
-/* TODO: enable only if custom_dates is selected, maybe in js */
 #custom_dates
 {
     display: none;
 }
 
-input
+form *
 {
-    display: block;
-    margin: 20px;
+    margin-top: 10px;
 }
 
-input[type="submit"]
+input[type="submit"], button
 {
     padding: 20px;
     border-style: none;
     background-color: #f28282;
-    font-size: 12.5pt;
 }
 
-input[type="submit"]:hover
+input[type="submit"]:hover, button:hover
 {
     cursor: pointer;
+    background-color: #f28282;
 }
 
 #lastfm_form, #spotify_form
 {
     display: inline-block;
+}
+
+#titles
+{
+    margin-bottom: 30px;
 }

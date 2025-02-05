@@ -1,38 +1,50 @@
 import spotipy # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials # type: ignore
 import dotenv
-import requests
+import pandas as pd
+
+from utils import lastfm_utils
 
 dotenv.load_dotenv()
 
 auth_manager = SpotifyClientCredentials()
 spotify_instance = spotipy.Spotify(auth_manager=auth_manager)
 
-def find_artist_uri_spotify(artist_name: str) -> str | None:
+def get_artist_uri(artist_name: str) -> str | None:
     search_results = spotify_instance.search(q=f"artist:{artist_name}", type="artist")
 
-    # TODO: empty result check
+    if search_results["artists"]["items"] == []:
+        return None
+
     search_results_filtered = [
         result["uri"]
         for result in search_results["artists"]["items"]
         if result["name"] == artist_name
     ]
 
-    return search_results_filtered[0]
+    return None if search_results_filtered == [] else search_results_filtered[0]
 
-# TODO: validation + case when an artist as two songs with the same name
-def find_track_or_album_uri_spotify(data_type: str, name: str, artist: str) -> list[str]:
+def get_track_or_album_uri(data_type: str, name: str, artist: str) -> str | None:
     search_results = spotify_instance.search(q=f"{data_type}:{name} artist:{artist}", type=data_type)
-    
-    # TODO: empty result check
-    search_results_filtered = [
-        result["uri"]
+
+    if data_type not in ["track", "album"]:
+        print("Invalid data type - should be track or album!")
+        return None
+
+    if search_results[data_type + "s"]["items"] == []:
+        return None
+
+    search_results_tuples: list[tuple[str, str]] = sorted([
+        (result["uri"], result["popularity"])
         for result in search_results[data_type + "s"]["items"]
         if result["name"] == name
-    ]
+    ], key=lambda item: item[1], reverse=True)
 
-    return search_results_filtered
+    search_results_filtered = list(map(lambda tup: tup[0], search_results_tuples))
 
+    return None if not search_results_filtered else search_results_filtered[0]
+
+# unfortunately, it doesn't return genres for most artists right now...
 def get_artists_data(uri_list: list[str]) -> list[dict] | None:
     # TODO: add error handling
 
@@ -86,3 +98,4 @@ def get_albums_data(uri_list: list[str]) -> list[dict] | None:
             ]
 
     return search_results_clean
+    
