@@ -34,13 +34,13 @@
 
         <div class="row">
             <!-- overall stats -> num of scrobbles, num_artists, average per day, popularity, idk else -->
-            <div class="col"></div>
+            <div class="col">{{ session.overall_stats | safe }}</div>
 
             <!-- similar artists -->
-            <div class="col"></div>
+            <div class="col">{{ session.tracks_table | safe }}</div>
 
             <!-- export similar artists to playlist; export scrobble data to sth? -->
-            <div class="col"></div>
+            <div class="col">{{ session.artists_table | safe }}</div>
         </div>
     </div>
 

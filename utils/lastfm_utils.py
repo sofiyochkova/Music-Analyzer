@@ -6,6 +6,7 @@ import dotenv
 import pandas as pd
 
 dotenv.load_dotenv()
+
 LASTFM_API_KEY = os.getenv("LASTFM_API_KEY")
 ROOT_URL = "http://ws.audioscrobbler.com/2.0/"
 
@@ -71,7 +72,7 @@ def get_top_data_predefined_time_period(username: str, data_type: str, time_peri
         response_dict = response.json()
 
         if "error" in response_dict.keys():
-            return "Encountered error: " + response_dict["error"]
+            return "Encountered error: " + response_dict["message"]
 
         list_tracks += [
             {
@@ -91,6 +92,7 @@ def get_top_data_predefined_time_period(username: str, data_type: str, time_peri
         page += 1
 
     df_tracks = pd.DataFrame(list_tracks)
+    df_tracks.dropna(axis=1, inplace=True)
     df_tracks.index += 1
 
     return df_tracks

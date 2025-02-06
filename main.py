@@ -3,8 +3,9 @@ import os
 from datetime import date
 
 from flask import Flask, render_template, url_for, request, redirect, session
-from utils import lastfm_utils, spotipy_utils, visualize_data, validation
+from utils import lastfm_utils, spotipy_utils, visualize_data, validation, analyze_data
 from flask_session import Session
+import asyncio
 
 app = Flask(__name__)
 
@@ -19,8 +20,6 @@ app.config["SESSION_PERMANENT"] = False
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 Session(app)
-
-# app.secret_key = os.urandom(24)
 
 @app.route("/")
 def main_page():
@@ -93,21 +92,31 @@ def lastfm_analysis(username):
         return redirect(url_for("main_page", messages=messages))
 
     graphs: dict[str, pd.DataFrame] = {}
+    top_data = {}
     full_tables = {}
     short_tables = {}
 
     # TODO: check if we receive a tuple
     for data_type in ["tracks", "albums", "artists"]: 
-        top_data = lastfm_utils.get_top_data_predefined_time_period(username, data_type, time_period)
-        full_tables[data_type] = visualize_data.get_html_table(top_data, data_type + "_full_table")
-        short_tables[data_type] = visualize_data.get_html_table(top_data, data_type + "_short_table", 15)
+        top_data[data_type] = lastfm_utils.get_top_data_predefined_time_period(username, data_type, time_period)
+        full_tables[data_type] = visualize_data.get_html_table(top_data[data_type], data_type + "_full_table")
+        short_tables[data_type] = visualize_data.get_html_table(top_data[data_type], data_type + "_short_table", 15)
         
-        script, div = visualize_data.get_data_scrobbles_chart(data_type, top_data)
+        script, div = visualize_data.get_data_scrobbles_chart(data_type, top_data[data_type])
         
         graphs[data_type] = {
             "script": script,
             "div": div
         }
+
+    spotify_track_data, missing_tracks = asyncio.run(analyze_data.get_spotify_track_data_by_lastfm_data(top_data["tracks"]))
+    spotify_artist_data, missing_artists = asyncio.run(analyze_data.get_spotify_artist_data_by_lastfm_data(top_data["artists"]))
+
+    tracks_table_html = visualize_data.get_html_table(spotify_track_data, "idk", 15)
+    artists_table_html = visualize_data.get_html_table(spotify_artist_data, "idk2", 15)
+
+    overall_stats = analyze_data.get_overall_stats_table(time_period, spotify_track_data, spotify_artist_data)
+    overall_stats_html = visualize_data.get_html_table(overall_stats, "idk3")
 
     if time_period == "custom":
         start_date = request.args.get("start")
@@ -129,6 +138,9 @@ def lastfm_analysis(username):
     session["graphs"] = graphs
     session["full_tables"] = full_tables
     session["short_tables"] = short_tables
+    session["overall_stats"] = overall_stats_html
+    session["tracks_table"] = tracks_table_html
+    session["artists_table"] = artists_table_html
 
     return render_template(
         'lastfm_analysis.html',
@@ -142,7 +154,6 @@ def see_more(username, data_type):
     title = request.args.get("prev_title")
     time_period = request.args.get("time_period")
     full_table = session.get("full_tables", {}).get(data_type)
-    # print(full_table)
     
     return render_template(
         "see_more.html",
