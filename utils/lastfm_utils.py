@@ -19,8 +19,8 @@ def check_if_user_exists(username: str) -> bool:
     }
 
     response = requests.get(ROOT_URL, params=params)
-    
-    try:    
+
+    try:
         if "error" in response.json().keys():
             return False
     except requests.exceptions.JSONDecodeError:
@@ -44,7 +44,7 @@ def get_registration_date(username: str):
 
     return date.fromtimestamp(int(response.json()["user"]["registered"]["unixtime"]))
 
-def get_top_data_predefined_time_period(username: str, data_type: str, time_period: str) -> pd.DataFrame | str:
+def get_top_data_predefined_period(username: str, data_type: str, time_period: str) -> pd.DataFrame | str:
     if not check_if_user_exists(username):
         return f"User {username} does not exist"
 
@@ -101,12 +101,10 @@ def get_recent_tracks_by_custom_dates(username: str, start_date: str, end_date: 
     start_stripped = datetime.fromisoformat(start_date + "T00:00:00")
     start_timestamp = int(start_stripped.timestamp())
 
-    print(start_timestamp)
-
     end_stripped = datetime.fromisoformat(end_date + "T23:59:59")
     end_stripped.replace(hour=23, minute=59, second=59)
     end_timestamp = int(end_stripped.timestamp())
-    print(end_timestamp)
+
     page = 1
     list_response = []
 
@@ -127,11 +125,10 @@ def get_recent_tracks_by_custom_dates(username: str, start_date: str, end_date: 
 
         list_response += [
             {
-                "name": track["name"], 
+                "track": track["name"], 
                 "artist": track["artist"]["#text"],
                 "album": track["album"]["#text"],
-                "scrobble_date_uts": datetime.timestamp(track["date"]["uts"]),
-                "scrobble_date_text": track["date"]["#text"]
+                "scrobble_time": datetime.fromtimestamp(int(track["date"]["uts"]))
             }
             for track in response_dict["recenttracks"]["track"]
             if "@attr" not in track.keys()

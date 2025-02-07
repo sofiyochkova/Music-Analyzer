@@ -19,7 +19,6 @@ time_period.addEventListener("change", function()
 });
 
 // TODO: fix validation when writing down the date manually
-// TODO: maybe add an option to leave start_date or end_date field empty
 end_date.addEventListener("input", function()
 {
     if(time_period.value == "custom")

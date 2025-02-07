@@ -8,7 +8,7 @@
 {% block content %}
     <button class="btn align-left"><a href="{{ url_for('main_page') }}">Home</a></button>
     <div class="text-center">
-        <h1>Last.fm stats for {{username}}: </h1>
+        <h1>Last.fm stats for {{ username }} <br> for time period {{ start_date }} - {{ end_date }}: </h1>
     </div>
 
     <div class="container-fluid">
@@ -17,7 +17,7 @@
                 <div class="col">
                     <h3>Top 15 {{ data_type.capitalize() }}</h3>
                         {{ table | safe }}
-                    <button class="btn"><a href="{{ url_for('see_more', username=username, time_period=time_period, prev_title=title, data_type=data_type)}}">See more</a></button>
+                    <button class="btn"><a href="{{ url_for('see_more', username=username, time_period=time_period, start_date=start_date, end_date=end_date, prev_title=title, data_type=data_type)}}">See more</a></button>
                 </div>
             {% endfor %}
         </div>
@@ -31,6 +31,11 @@
         </div>
 
         <div class="row">
+            {% for name, graph in session.custom_graphs.items() %}
+                <div class="col">
+                    {{ graph.div | safe }}
+                </div>
+            {% endfor %}
             <!-- overall stats -> num of scrobbles, num_artists, average per day, popularity, idk else -->
             <!-- <div class="col">{{ session.overall_stats | safe }}</div> -->
 
@@ -48,6 +53,10 @@
     <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.2.min.js"></script>
 
     {% for name, graph in session.graphs.items() %}
+        {{ graph.script | safe }}
+    {% endfor %}
+
+    {% for name, graph in session.custom_graphs.items() %}
         {{ graph.script | safe }}
     {% endfor %}
 

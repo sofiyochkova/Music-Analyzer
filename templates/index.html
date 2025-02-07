@@ -45,26 +45,26 @@
                     </div>
                     <input class="btn" type="submit" value="Submit">
                 </form>
-
-                <!-- if account not found or invalid data given -->
-                {% if messages %}
-                    <div class="callout-danger">
-                        {% for message in messages %}
-                            <p>{{ message }}</p>
-                        {% endfor %}
-                    </div>
-                {% endif %}
             </div>
 
             <div class="col">
                 <p>Upload Spotify user data here: </p>
-                <form action="/analyze_spotify_data" method="POST">
+                <form action="/validate_files" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <input type="file" class="form-control-file" multiple>
+                        <input type="file" class="form-control-file" id="json_files" accept="application/json" multiple>
                     </div>
                     <input class="btn" type="submit" value="Submit">
                 </form>
             </div>
+        </div>
+        <div class="row">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
         </div>
     </div>
 

@@ -1,13 +1,14 @@
+import asyncio
+
 import spotipy # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials # type: ignore
 import dotenv
 import pandas as pd
-import asyncio
 
 dotenv.load_dotenv()
 
 auth_manager = SpotifyClientCredentials()
-spotify_instance = spotipy.Spotify(auth_manager=auth_manager)
+spotify = spotipy.Spotify(auth_manager=auth_manager)
 
 WAIT_TIME = 0.5
 
@@ -16,9 +17,12 @@ def get_artist_uri(artist_name: str) -> str | None:
     #spotify search apparently doesn't like special symbols
     artist_name = artist_name.strip("'")
 
-    search_results = spotify_instance.search(q=f"artist:{artist_name}", type="artist", limit=50)
+    print("Getting " + artist_name)
+
+    search_results = spotify.search(q=f"artist:{artist_name}", type="artist", limit=50)
 
     if search_results["artists"]["items"] == []:
+        print("Not found")
         return None
 
     search_results_filtered = [
@@ -34,7 +38,8 @@ def get_track_or_album_uri(data_type: str, name: str, artist: str) -> str | None
         print("Invalid data type - should be track or album!")
         return None
 
-    search_results = spotify_instance.search(q=f"{data_type}:{name} artist:{artist}", type=data_type)
+    print("Getting " + artist + " - " + name)
+    search_results = spotify.search(q=f"{data_type}:{name} artist:{artist}", type=data_type)
 
     if search_results[data_type + "s"]["items"] == []:
         return None
@@ -53,7 +58,7 @@ def get_track_or_album_uri(data_type: str, name: str, artist: str) -> str | None
 def get_artists_data(uri_list: list[str]) -> pd.DataFrame:
     # TODO: add error handling
 
-    artists_data = spotify_instance.artists(uri_list)
+    artists_data = spotify.artists(uri_list)
 
     artists_data_clean = [
         {
@@ -69,14 +74,17 @@ def get_artists_data(uri_list: list[str]) -> pd.DataFrame:
     return pd.DataFrame(artists_data_clean)
 
 def get_tracks_data(uri_list: list[str]) -> pd.DataFrame:
-    result_data = spotify_instance.tracks(uri_list)
+    result_data = spotify.tracks(uri_list)
 
     search_results_clean = [
                 {
                     "name": result["name"],
                     "artist": result["artists"][0]["name"],
                     "album": result["album"]["name"],
-                    "image": ([] if result["album"]["images"] == [] else result["album"]["images"][0]["url"]),
+                    "image": (
+                        [] if result["album"]["images"] == []
+                        else result["album"]["images"][0]["url"]
+                    ),
                     "release_date": result["album"]["release_date"],
                     "duration": int(result["duration_ms"]),
                     "popularity": int(result["popularity"]), 
@@ -88,7 +96,7 @@ def get_tracks_data(uri_list: list[str]) -> pd.DataFrame:
     return pd.DataFrame(search_results_clean)
 
 def get_albums_data(uri_list: list[str]) -> pd.DataFrame:
-    result_data = spotify_instance.albums(uri_list)
+    result_data = spotify.albums(uri_list)
 
     search_results_clean = [
                 {
@@ -110,7 +118,7 @@ async def get_artist_uri_async(artist_name: str) -> tuple[str, str | None]:
     async with semaphore:
         result = await asyncio.to_thread(get_artist_uri, artist_name)
         await asyncio.sleep(WAIT_TIME)
-    
+                        
     return (artist_name, result)
 
 async def get_track_or_album_uri_async(data_type: str, name: str, artist: str) -> tuple[str, str, str | None]:
