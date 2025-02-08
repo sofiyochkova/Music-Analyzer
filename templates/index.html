@@ -13,7 +13,7 @@
     <div class="container">
         <div class="row">
             <div id="lastfm_form" class="col">
-                <p>Enter <a href="https://www.last.fm/home">Last.fm</a> username: </p>
+                <p>Enter <a id="lastfm_link" href="https://www.last.fm/home">Last.fm</a> username: </p>
 
                 <form action="/validate_data" method="POST">
                     <div class="form-group">
@@ -51,12 +51,13 @@
                 <p>Upload Spotify user data here: </p>
                 <form action="/validate_files" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <input type="file" class="form-control-file" id="json_files" accept="application/json" multiple>
+                        <input type="file" required class="form-control-file" id="json_files" accept="application/json" multiple>
                     </div>
                     <input class="btn" type="submit" value="Submit">
                 </form>
             </div>
         </div>
+        
         <div class="row">
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
@@ -64,7 +65,7 @@
                         {{ message }}
                     {% endfor %}
                 {% endif %}
-                {% endwith %}
+            {% endwith %}
         </div>
     </div>
 

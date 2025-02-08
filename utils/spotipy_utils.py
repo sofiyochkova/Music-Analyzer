@@ -1,9 +1,16 @@
+"""
+    Contains all functions requiring Spotify API calls.
+"""
+
 import asyncio
+import re
 
 import spotipy # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials # type: ignore
 import dotenv
 import pandas as pd
+
+from utils import validation
 
 dotenv.load_dotenv()
 
@@ -12,17 +19,15 @@ spotify = spotipy.Spotify(auth_manager=auth_manager)
 
 WAIT_TIME = 0.5
 
-# TODO: refine search -> some artists are not found
 def get_artist_uri(artist_name: str) -> str | None:
-    #spotify search apparently doesn't like special symbols
-    artist_name = artist_name.strip("'")
+    "Search an artist by name - returns their unique uri code"
 
-    print("Getting " + artist_name)
-
-    search_results = spotify.search(q=f"artist:{artist_name}", type="artist", limit=50)
+    # spotify search apparently doesn't like special symbols
+    artist_name_clean = re.sub(r'[^\w\s]', '', artist_name)
+    print("Getting " + artist_name_clean)
+    search_results = spotify.search(q=f"artist:{artist_name_clean}", type="artist", limit=50)
 
     if search_results["artists"]["items"] == []:
-        print("Not found")
         return None
 
     search_results_filtered = [
@@ -34,29 +39,32 @@ def get_artist_uri(artist_name: str) -> str | None:
     return None if search_results_filtered == [] else search_results_filtered[0]
 
 def get_track_or_album_uri(data_type: str, name: str, artist: str) -> str | None:
-    if data_type not in ["track", "album"]:
-        print("Invalid data type - should be track or album!")
+    "Search an artist by name - returns their unique uri code"
+
+    if not validation.check_spotify_data_type(data_type):
         return None
 
-    print("Getting " + artist + " - " + name)
     search_results = spotify.search(q=f"{data_type}:{name} artist:{artist}", type=data_type)
 
     if search_results[data_type + "s"]["items"] == []:
         return None
 
-    search_results_tuples: list[tuple[str, str]] = sorted([
+    uri_popularity_tuples: list[tuple[str, str]] = sorted([
         (result["uri"], result["popularity"])
         for result in search_results[data_type + "s"]["items"]
         if result["name"].lower() == name.lower()
     ], key=lambda item: item[1], reverse=True)
 
-    search_results_filtered = list(map(lambda tup: tup[0], search_results_tuples))
+    uri_list = [
+        uri
+        for uri, _ in uri_popularity_tuples
+    ]
 
-    return None if not search_results_filtered else search_results_filtered[0]
+    return None if not uri_list else uri_list[0]
 
 # unfortunately, it doesn't return genres for most artists right now...
 def get_artists_data(uri_list: list[str]) -> pd.DataFrame:
-    # TODO: add error handling
+    "Get artists data based on a given list of uri codes"
 
     artists_data = spotify.artists(uri_list)
 
@@ -74,17 +82,16 @@ def get_artists_data(uri_list: list[str]) -> pd.DataFrame:
     return pd.DataFrame(artists_data_clean)
 
 def get_tracks_data(uri_list: list[str]) -> pd.DataFrame:
-    result_data = spotify.tracks(uri_list)
+    "Get tracks data based on a given list of uris"
 
+    result_data = spotify.tracks(uri_list)
+        
     search_results_clean = [
                 {
                     "name": result["name"],
                     "artist": result["artists"][0]["name"],
                     "album": result["album"]["name"],
-                    "image": (
-                        [] if result["album"]["images"] == []
-                        else result["album"]["images"][0]["url"]
-                    ),
+                    "image": result["album"]["images"].get(0).get("url"),
                     "release_date": result["album"]["release_date"],
                     "duration": int(result["duration_ms"]),
                     "popularity": int(result["popularity"]), 
@@ -96,13 +103,15 @@ def get_tracks_data(uri_list: list[str]) -> pd.DataFrame:
     return pd.DataFrame(search_results_clean)
 
 def get_albums_data(uri_list: list[str]) -> pd.DataFrame:
+    "Get tracks data based on a given list of uris."
+
     result_data = spotify.albums(uri_list)
 
     search_results_clean = [
                 {
                     "name": result["name"],
                     "artist": result["artists"][0]["name"],
-                    "image": ([] if result["images"] == [] else result["images"][0]["url"]),
+                    "image": result["album"]["images"].get(0).get("url"),
                     "release_date": result["release_date"],
                     "popularity": int(result["popularity"]), 
                     "uri": result["uri"]
@@ -113,35 +122,47 @@ def get_albums_data(uri_list: list[str]) -> pd.DataFrame:
     return pd.DataFrame(search_results_clean)
 
 async def get_artist_uri_async(artist_name: str) -> tuple[str, str | None]:
+    "Asynchronous version of get_artist_uri."
+
     semaphore = asyncio.Semaphore(5)
 
     async with semaphore:
-        result = await asyncio.to_thread(get_artist_uri, artist_name)
-        await asyncio.sleep(WAIT_TIME)
-                        
-    return (artist_name, result)
-
-async def get_track_or_album_uri_async(data_type: str, name: str, artist: str) -> tuple[str, str, str | None]:
-    semaphore = asyncio.Semaphore(5)
-
-    async with semaphore:
-        result = await asyncio.to_thread(get_track_or_album_uri, data_type, name, artist)
+        artist_uri = await asyncio.to_thread(get_artist_uri, artist_name)
         await asyncio.sleep(WAIT_TIME)
 
-    return (name, artist, result)
+    return (artist_name, artist_uri)
 
-async def get_tracks_data_async(uri_list: list[str]) -> pd.DataFrame:
+async def get_track_or_album_uri_async(
+        data_type: str,
+        name: str,
+        artist: str
+        ) -> tuple[str, str, str | None]:
+    "Asynchronous version of get_track_or_album_uri."
+
     semaphore = asyncio.Semaphore(5)
 
     async with semaphore:
-        result = await asyncio.to_thread(get_tracks_data, uri_list)
+        uri = await asyncio.to_thread(get_track_or_album_uri, data_type, name, artist)
         await asyncio.sleep(WAIT_TIME)
-    return result
 
-async def get_artists_data_async(uri_list: list[str]) -> pd.DataFrame:
+    return (name, artist, uri)
+
+async def get_data_async(data_type: str, uri_list: list[str]) -> pd.DataFrame:
+    """Takes a list of uri codes and returns a dataframe with their data.
+    
+    Keyword arguments:
+    - data_type -- tracks | albums | artists
+    - uri_list -- list of uri codes
+    """
+
+    data_function = {
+        "tracks": get_tracks_data,
+        "artists": get_artists_data, "albums": get_albums_data
+        }
+
     semaphore = asyncio.Semaphore(5)
 
     async with semaphore:
-        result = await asyncio.to_thread(get_artists_data, uri_list)
+        result = await asyncio.to_thread(data_function[data_type], uri_list)
         await asyncio.sleep(WAIT_TIME)
     return result

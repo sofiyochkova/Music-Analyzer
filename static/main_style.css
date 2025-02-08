@@ -5,15 +5,19 @@
     font-family:'Lora', serif;
 }
 
+a
+{
+    text-decoration: none;
+}
+
 body
 {
     background-color: #faded9;
     color: #203287;
 }
 
-a
+#lastfm_link
 {
-    text-decoration: none;
     color: #d92323;
 }
 
@@ -27,14 +31,15 @@ form *
     margin-top: 10px;
 }
 
-input[type="submit"], button
+input[type="submit"], .btn
 {
     padding: 20px;
     border-style: none;
     background-color: #f28282;
+    margin: 15px;
 }
 
-input[type="submit"]:hover, button:hover
+input[type="submit"]:hover, .btn:hover
 {
     cursor: pointer;
     background-color: #f28282;

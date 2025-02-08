@@ -1,9 +1,15 @@
+"""
+    Functions which take all tracks or artists from a Last.fm user's
+    listening history and write the uri codes into a file
+"""
+
 import json
 
 import lastfm_utils
 import spotipy_utils
 
-def get_all_track_uris(username):
+def get_all_track_uris(username: str) -> None:
+    "Dumps the uri codes of all listened to tracks into a json file"
     all_data = lastfm_utils.get_top_data_predefined_period(username, "tracks", "overall")
     line_data: list[dict[str, str | None]] = []
 
@@ -20,11 +26,11 @@ def get_all_track_uris(username):
     with open("all_tracks_uris.json", "w", encoding="utf-8") as fd:
         json.dump(line_data, fd, indent=2)
 
-def get_all_artist_uris(username):
+def get_all_artist_uris(username: str) -> None:
+    "Dumps the uri codes of all listened to artists into a json file"
+
     all_data = lastfm_utils.get_top_data_predefined_period(username, "artists", "overall")
     line_data: list[dict[str, str | None]] = []
-
-    # semaphore = asyncio.Semaphore(5)
 
     line_data = [
         {
@@ -37,7 +43,3 @@ def get_all_artist_uris(username):
 
     with open("all_artists_uris.json", "w", encoding="utf-8") as fd:
         json.dump(line_data, fd, indent=2)
-
-if __name__ == "__main__":
-    get_all_track_uris("sandy1009")
-    # print(spotipy_utils.get_artist_uri("The Clause"))

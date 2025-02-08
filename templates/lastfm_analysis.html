@@ -8,26 +8,38 @@
 {% block content %}
     <button class="btn align-left"><a href="{{ url_for('main_page') }}">Home</a></button>
     <div class="text-center">
-        <h1>Last.fm stats for {{username}}: </h1>
+        <h1>Last.fm stats for {{ username }} for {{ time_period }}: </h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <h3>{{ message }}</h3>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
     </div>
 
     <div class="container-fluid">
         <div class="row">
-            {% for data_type, table in session.short_tables.items() %}
-                <div class="col">
-                    <h3>Top 15 {{ data_type.capitalize() }}</h3>
-                        {{ table | safe }}
-                    <button class="btn"><a href="{{ url_for('see_more', username=username, time_period=time_period, prev_title=title, data_type=data_type)}}">See more</a></button>
-                </div>
-            {% endfor %}
+            {% if session.short_tables %}
+                {% for data_type, table in session.short_tables.items() %}
+                    <div class="col">
+                        <h3>Top 15 {{ data_type.capitalize() }}</h3>
+                            {{ table | safe }}
+                        <button class="btn"><a href="{{ url_for('see_more', username=username, time_period=time_period, prev_title=title, data_type=data_type)}}">See more</a></button>
+                    </div>
+                {% endfor %}       
+            {% endif %}
         </div>
 
         <div class="row">
-            {% for name, graph in session.graphs.items() %}
-                <div class="col">
-                    {{ graph.div | safe }}
-                </div>
-            {% endfor %}
+            {% if session.graphs %}
+                {% for name, graph in session.graphs.items() %}
+                    <div class="col">
+                        {{ graph.div | safe }}
+                    </div>
+                {% endfor %}
+            {% endif %}
         </div>
 
         <div class="row">
@@ -47,8 +59,10 @@
 {% block scripts %}
     <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.2.min.js"></script>
 
-    {% for name, graph in session.graphs.items() %}
-        {{ graph.script | safe }}
-    {% endfor %}
+    {% if session.graphs %}
+        {% for name, graph in session.graphs.items() %}
+            {{ graph.script | safe }}
+        {% endfor %}      
+    {% endif %}
 
 {% endblock %}

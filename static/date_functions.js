@@ -18,13 +18,17 @@ time_period.addEventListener("change", function()
     }
 });
 
-// TODO: fix validation when writing down the date manually
-end_date.addEventListener("input", function()
+end_date.addEventListener("change", function()
 {
-    if(time_period.value == "custom")
+    if(time_period.value === "custom")
     {
         const start_value = new Date(start_date.value);
         const end_value = new Date(end_date.value);
+
+        if(end_value < 2000)
+        {
+            return;
+        }
 
         if(start_date.value && end_value < start_value)
         {

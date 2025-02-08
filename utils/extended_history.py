@@ -1,15 +1,22 @@
+"""
+    Module with functions which collect
+    and analyze Spotify listening data based on json files.
+"""
+
 import json
 import os
 from datetime import datetime
 
-from flask import app
-
 import pandas as pd
 
-def parse_file_data():
-    for filename in os.listdir(app.config["UPLOAD_FOLDER"]):
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-                                
+def parse_file_data(upload_folder: str) -> pd.DataFrame:
+    """
+        Return a dataframe with all data in the uploads folder.
+    """
+        
+    for filename in os.listdir(upload_folder):
+        file_path = os.path.join(upload_folder, filename)
+
         dataframes = []
 
         with open(file_path, "r") as fd:

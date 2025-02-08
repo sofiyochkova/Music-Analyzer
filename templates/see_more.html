@@ -5,11 +5,20 @@
 {% endblock %}
 
 {% block content %}
+<button class="btn align-left position-fixed" onclick="go_back()">Back</button>
+
 <div class="container">
     <h2>Full {{ data_type.capitalize() }} Table</h2>
     {{ full_table | safe }}
-    
-    <!-- TODO: invalid time period here  -->
-    <button class="btn"><a href="{{ url_for('lastfm_analysis', username=username, title=prev_title, time_period=time_period) }}">Back</a></button>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    function go_back()
+    {
+        window.history.back();
+    }
+</script>
+{% endblock %}
+
