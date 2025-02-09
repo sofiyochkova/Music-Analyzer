@@ -54,3 +54,9 @@ input[type="submit"]:hover, .btn:hover
 {
     margin-bottom: 30px;
 }
+
+#messages
+{
+    width: 40%;
+    padding: 30px;
+}

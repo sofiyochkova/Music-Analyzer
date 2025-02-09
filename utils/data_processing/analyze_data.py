@@ -23,7 +23,7 @@ def merge_tracks_data_predefined(lastfm_tracks_data: pd.DataFrame) -> pd.DataFra
 
     return df_merged
 
-def merge_artists_data_predefined(lastfm_artists_data: pd.DataFrame, top: int=50) -> pd.DataFrame:
+def merge_artists_data_predefined(lastfm_artists_data: pd.DataFrame, top: int=10) -> pd.DataFrame:
     "Merge artist data from Last.fm and Spotify - non-async."
         
     lastfm_artists_data = lastfm_artists_data.head(top)

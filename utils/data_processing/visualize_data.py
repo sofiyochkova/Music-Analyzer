@@ -3,7 +3,7 @@
     of graphs and tables with different kinds of data.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from math import pi
 
 import pandas as pd
@@ -15,18 +15,6 @@ from bokeh.embed import components
 from utils import validation
 
 TOOLS="wheel_zoom,box_zoom,reset,save"
-
-def group_by_timeframe(df: pd.DataFrame, start_date: datetime, end_date: datetime) -> pd.DataFrame:
-    if (end_date - start_date).days <= 7:
-        df["time_group"] = df["scrobble_time"].dt.date
-    elif (end_date - start_date).days <= 31:
-        df["time_group"] = df["scrobble_time"].dt.to_period("W")
-    elif (end_date - start_date).days < 365:
-        df["time_group"] = df["scrobble_time"].dt.to_period("M")
-    else:
-        df["time_group"] = df["scrobble_time"].dt.to_period("Y")
-
-    return df
 
 def get_top_scrobbles_chart(
         data_type: str,
@@ -88,7 +76,7 @@ def get_top_scrobbles_chart(
 
     return script, div
 
-def get_html_table(dataframe: pd.DataFrame, top_items: int | None=None) -> str:
+def get_html_table(dataframe: pd.DataFrame | pd.Series, top_items: int | None=None) -> str:
     """Return the html table for a dataframe.
     
     Keyword arguments:
@@ -100,10 +88,26 @@ def get_html_table(dataframe: pd.DataFrame, top_items: int | None=None) -> str:
 
     return dataframe.to_html(classes=("table", "table-striped", "align-middle"))
 
+def group_by_timeframe(df: pd.DataFrame, start_date: date, end_date: date) -> pd.DataFrame:
+    """Group dataframe into time periods for 
+    further processing in line graphs.
+    """
+    
+    days_difference = (end_date - start_date).days
+
+    if days_difference <= 7:
+        df["time_group"] = df["scrobble_time"].dt.date
+    elif days_difference <= 31:
+        df["time_group"] = df["scrobble_time"].dt.to_period("W").dt.to_timestamp()
+    else:
+        df["time_group"] = df["scrobble_time"].dt.to_period("M").dt.to_timestamp()
+
+    return df
+
 def get_cumulative_scrobble_stats(
     dataframe: pd.DataFrame,
-    start_date: datetime,
-    end_date: datetime
+    start_date: date,
+    end_date: date
     ) -> tuple[str, str]:
     """Return div and script of cumulative scrobbling data
     
@@ -116,32 +120,44 @@ def get_cumulative_scrobble_stats(
     group_by_timeframe(dataframe, start_date, end_date)
     print(dataframe)
 
+    dataframe["time_group"] = pd.to_datetime(dataframe["time_group"])
+    start_datetime = datetime(start_date.year, start_date.month, start_date.day)
+    end_datetime = datetime(end_date.year, end_date.month, end_date.day)
+
     plot = figure(
         tools=TOOLS,
-        # x_range=dataframe["time_group"],
         x_axis_label="date",
-        y_axis_label="number of scrobbles",
-        title=f"Cumulative number of scrobbles for period {start_date} - {end_date}",
-        sizing_mode="stretch_width"
+        y_axis_label="cumulative number of scrobbles",
+        title=f"Cumulative number of scrobbles for {start_date} - {end_date}",
+        sizing_mode="stretch_width",
+        x_axis_type="datetime",
+        x_range=(start_datetime, end_datetime)
         )
 
-    plot.line(
-        dataframe["time_group"],
-        dataframe.groupby(["artist"]).count(),
-        width=0.5
+    colors = {"artist": "blue", "track": "red", "album": "green"}
+
+    for data_type, color in colors.items():
+        category_df = dataframe.groupby(
+                ["time_group", data_type]
+            ).size().reset_index(name="scrobble_count")
+
+        category_df = category_df.sort_values("time_group")
+        print(category_df)
+        category_df = category_df.groupby("time_group").size().reset_index(name="scrobbles")
+        category_df["cumulative_scrobbles"] = category_df["scrobbles"].cumsum()
+        print(category_df)
+
+        source=ColumnDataSource(category_df)
+        plot.line(
+            x="time_group",
+            y="cumulative_scrobbles",
+            source=source,
+            line_width=2,
+            color=color,
+            legend_label=data_type.capitalize()
         )
 
-    plot.line(
-        dataframe["time_group"],
-        dataframe.groupby(["track"]).count(),
-        width=0.5
-        )
-
-    plot.line(
-        dataframe["time_group"],
-        dataframe.groupby(["album"]).count(),
-        width=0.5
-        )
+    plot.legend.title = "Category"
 
     script, div = components(plot)
 

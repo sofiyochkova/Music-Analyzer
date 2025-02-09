@@ -10,7 +10,7 @@
 """
 
 import os
-from datetime import datetime
+from datetime import date
 
 from flask import Flask, render_template, url_for, request, redirect, session
 from werkzeug.utils import secure_filename
@@ -100,17 +100,18 @@ def lastfm_analysis_predefined(username: str, time_period: str):
     graphs = {}
     full_tables = {}
     short_tables = {}
+    top_data = {}
 
     for data_type in ["tracks", "albums", "artists"]:
-        top_data = get_data.top_data_predefined_period(username, data_type, time_period)
+        top_data[data_type] = get_data.top_data_predefined_period(username, data_type, time_period)
 
-        if not validation.non_empty_dataframe(top_data):
+        if not validation.non_empty_dataframe(top_data[data_type]):
             break
 
-        full_tables[data_type] = visualize_data.get_html_table(top_data)
-        short_tables[data_type] = visualize_data.get_html_table(top_data, 15)
+        full_tables[data_type] = visualize_data.get_html_table(top_data[data_type])
+        short_tables[data_type] = visualize_data.get_html_table(top_data[data_type], 15)
 
-        chart = visualize_data.get_top_scrobbles_chart(data_type, top_data, False)
+        chart = visualize_data.get_top_scrobbles_chart(data_type, top_data[data_type], False)
 
         if chart:
             script, div = chart
@@ -120,12 +121,18 @@ def lastfm_analysis_predefined(username: str, time_period: str):
                 "div": div
             }
 
-        session["graphs"] = graphs
-        session["full_tables"] = full_tables
-        session["short_tables"] = short_tables
-        # session["overall_stats"] = overall_stats_html
-        # session["tracks_table"] = tracks_table_html
-        # session["artists_table"] = artists_table_html
+    # merged_tracks = analyze_data.merge_tracks_data_predefined(top_data["tracks"])
+    # merged_artists = analyze_data.merge_artists_data_predefined(top_data["artists"])
+
+    # overall_stats = analyze_data.get_overall_stats_table_predefined(merged_tracks, merged_artists)
+    # overall_stats_html = visualize_data.get_html_table(overall_stats)
+
+    session["graphs"] = graphs
+    session["full_tables"] = full_tables
+    session["short_tables"] = short_tables
+    # session["overall_stats"] = overall_stats_html
+    # session["tracks_table"] = tracks_table_html
+    # session["artists_table"] = artists_table_html
 
     return render_template(
         "lastfm_analysis.html",
@@ -160,14 +167,7 @@ def lastfm_analysis_custom(username):
     custom_data = get_data.recent_tracks_by_custom_dates(username, start_date, end_date)
 
     if not validation.non_empty_dataframe(custom_data):
-        return render_template(
-            "lastfm_analysis_custom.html",
-            title=f"{username} Track Analysis",
-            username=username,
-            start_date=start_date,
-            end_date=end_date,
-            time_period=time_period
-        )
+        return redirect(url_for("main_page"))
 
     graphs = {}
     full_tables = {}
@@ -197,9 +197,11 @@ def lastfm_analysis_custom(username):
             "div": div
         }
 
-    start = datetime.fromisoformat(start_date)
-    end = datetime.fromisoformat(end_date)
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
     script, div = visualize_data.get_cumulative_scrobble_stats(custom_data, start, end)
+
+    
 
     custom_graphs = {}
     custom_graphs["cumulative"] = {
@@ -210,8 +212,8 @@ def lastfm_analysis_custom(username):
     session["graphs"] = graphs
     session["full_tables"] = full_tables
     session["short_tables"] = short_tables
-    session["custom_graphs"] = {}#custom_graphs
-    # session["overall_stats"] = overall_stats_html
+    session["custom_graphs"] = custom_graphs
+    session["overall_stats"] = overall_stats_html
     # session["tracks_table"] = tracks_table_html
     # session["artists_table"] = artists_table_html
 

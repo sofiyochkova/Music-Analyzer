@@ -44,11 +44,11 @@
                     {{ graph.div | safe }}
                 </div>
             {% endfor %}
-            <!-- overall stats -> num of scrobbles, num_artists, average per day, popularity, idk else -->
-            <!-- <div class="col">{{ session.overall_stats | safe }}</div> -->
+
+            <div class="col">{{ session.overall_stats | safe }}</div>
 
             <!-- similar artists -->
-            <!-- <div class="col">{{ session.tracks_table | safe }}</div> -->
+            <div class="col">{{ session.tracks_table | safe }}</div>
 
             <!-- export similar artists to playlist; export scrobble data to sth? -->
             <!-- <div class="col">{{ session.artists_table | safe }}</div> -->
@@ -58,7 +58,7 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.2.min.js"></script>
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.3.min.js"></script>
 
     {% for name, graph in session.graphs.items() %}
         {{ graph.script | safe }}
@@ -67,5 +67,4 @@
     {% for name, graph in session.custom_graphs.items() %}
         {{ graph.script | safe }}
     {% endfor %}
-
 {% endblock %}
