@@ -13,6 +13,7 @@ from bokeh.models import ColumnDataSource
 from bokeh.embed import components
 
 from utils import validation
+from utils.lastfm import lastfm_validation
 
 TOOLS="wheel_zoom,box_zoom,reset,save"
 
@@ -92,10 +93,10 @@ def group_by_timeframe(df: pd.DataFrame, start_date: date, end_date: date) -> pd
     """Group dataframe into time periods for 
     further processing in line graphs.
     """
-    
+
     days_difference = (end_date - start_date).days
 
-    if days_difference <= 7:
+    if days_difference <= 15:
         df["time_group"] = df["scrobble_time"].dt.date
     elif days_difference <= 31:
         df["time_group"] = df["scrobble_time"].dt.to_period("W").dt.to_timestamp()
@@ -118,7 +119,6 @@ def get_cumulative_scrobble_stats(
     """
 
     group_by_timeframe(dataframe, start_date, end_date)
-    print(dataframe)
 
     dataframe["time_group"] = pd.to_datetime(dataframe["time_group"])
     start_datetime = datetime(start_date.year, start_date.month, start_date.day)
@@ -142,10 +142,9 @@ def get_cumulative_scrobble_stats(
             ).size().reset_index(name="scrobble_count")
 
         category_df = category_df.sort_values("time_group")
-        print(category_df)
-        category_df = category_df.groupby("time_group").size().reset_index(name="scrobbles")
+        category_df = category_df.groupby("time_group") \
+            .size().reset_index(name="scrobbles")
         category_df["cumulative_scrobbles"] = category_df["scrobbles"].cumsum()
-        print(category_df)
 
         source=ColumnDataSource(category_df)
         plot.line(
@@ -162,3 +161,59 @@ def get_cumulative_scrobble_stats(
     script, div = components(plot)
 
     return script, div
+
+def get_total_stats_from_lastfm(
+        username: str,
+        tracks_data: pd.DataFrame,
+        artists_data: pd.DataFrame,
+        albums_data: pd.DataFrame,
+        time_period: str | None=None,
+        start_date: datetime | None=None,
+        end_date: datetime | None=None,
+    ) -> pd.DataFrame:
+    "Return a Series of overall stats only from lastfm data."
+    all_scrobbles = tracks_data["scrobble count"].sum()
+    all_tracks = len(tracks_data.index)
+    all_artists = len(artists_data.index)
+    all_albums = len(albums_data.index)
+
+    if start_date and end_date:
+        days_count = (end_date - start_date).days
+        
+    if time_period:
+        match time_period:
+            case "7day":
+                days_count = 7
+            case "1month"| "3month" | "6month":
+                days_count = int(time_period[0]) * 30
+            case "12month":
+                days_count = 365
+            case "overall":
+                registration_date = lastfm_validation.get_registration_date(username)
+                days_count = (date.today() - registration_date).days
+
+    if not days_count:
+        return pd.DataFrame()
+
+    average_scrobbles_per_day = all_scrobbles / days_count
+
+    data = [
+        all_scrobbles,
+        all_tracks,
+        all_artists,
+        all_albums,
+        average_scrobbles_per_day
+    ]
+
+    indexes = [
+        "Number of scrobbles",
+        "Number of tracks",
+        "Number of artists",
+        "Number of albums",
+        "Average scrobbles per day"
+    ]
+
+    total_data = pd.DataFrame(data=data, index=indexes, columns=["count"])
+    total_data["count"] = total_data["count"].astype(int)
+
+    return total_data

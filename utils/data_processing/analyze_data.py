@@ -25,7 +25,7 @@ def merge_tracks_data_predefined(lastfm_tracks_data: pd.DataFrame) -> pd.DataFra
 
 def merge_artists_data_predefined(lastfm_artists_data: pd.DataFrame, top: int=10) -> pd.DataFrame:
     "Merge artist data from Last.fm and Spotify - non-async."
-        
+                
     lastfm_artists_data = lastfm_artists_data.head(top)
 
     uris = [
@@ -56,15 +56,13 @@ def get_spotify_track_data_from_file(lastfm_data: pd.DataFrame) -> pd.DataFrame:
             if name.lower() == row["name"].lower() and artist.lower() == row["artist"].lower()
         ]
 
-        print(needed_uris)
-
     return pd.DataFrame()
 
-def get_overall_stats_table_predefined(
+def get_total_stats_table_predefined(
         tracks_data: pd.DataFrame,
         artists_data: pd.DataFrame
-    ) -> pd.Series:
-    """Return a Series of overall listening data
+    ) -> pd.DataFrame:
+    """Return a DataFrame of total listening data
         based on Spotify and Last.fm data combined
     
     Keyword arguments:
@@ -105,4 +103,4 @@ def get_overall_stats_table_predefined(
         "Average artist popularity"
     ]
 
-    return pd.Series(data=stats, index=indexes)
+    return pd.DataFrame(data=stats, index=indexes, columns=["stats", "count"])

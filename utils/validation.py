@@ -70,7 +70,7 @@ def valid_date_intervals(username: str, start_date: str, end_date: str):
     if not registration_date:
         flash("Registration date was not received!")
         return False
-        
+
     if end < start:
         flash("End date cannot be before start date!")
         return False
@@ -82,7 +82,7 @@ def valid_date_intervals(username: str, start_date: str, end_date: str):
     if end > date.today():
         flash(f"End date {end_date} cannot be in the future!")
         return False
-        
+                                
     return True
 
 def is_file_extension_json(filename: str) -> bool:

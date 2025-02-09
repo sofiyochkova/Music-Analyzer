@@ -39,19 +39,35 @@
         </div>
 
         <div class="row">
+            {% if session.overall_stats %}
+                <div class="col">
+                    <h3>Total data stats: </h3>
+                    {{ session.overall_stats | safe }}
+                </div>
+            {% endif %}
+
             {% for name, graph in session.custom_graphs.items() %}
                 <div class="col">
                     {{ graph.div | safe }}
                 </div>
             {% endfor %}
 
-            <div class="col">{{ session.overall_stats | safe }}</div>
+            {% if similar_artists %}
+                <div class="col">
+                    <h3>Similar artists:</h3>
+                    <table class="table table-striped align-middle">
+                        {% for artist in similar_artists %}
+                            <tr>
+                                <td><a target="_blank" href="{{ artist.url }}">{{ artist.name }}</a></td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            {% endif %}
+        </div>
 
-            <!-- similar artists -->
-            <div class="col">{{ session.tracks_table | safe }}</div>
-
-            <!-- export similar artists to playlist; export scrobble data to sth? -->
-            <!-- <div class="col">{{ session.artists_table | safe }}</div> -->
+        <div class="row">
+            
         </div>
     </div>
 

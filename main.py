@@ -18,7 +18,7 @@ from flask_session.__init__ import Session #type: ignore
 
 from utils import validation
 from utils.lastfm import get_data, lastfm_validation
-from utils.data_processing import analyze_data, visualize_data
+from utils.data_processing import visualize_data
 
 app = Flask(__name__)
 
@@ -121,24 +121,30 @@ def lastfm_analysis_predefined(username: str, time_period: str):
                 "div": div
             }
 
-    # merged_tracks = analyze_data.merge_tracks_data_predefined(top_data["tracks"])
-    # merged_artists = analyze_data.merge_artists_data_predefined(top_data["artists"])
+    overall_stats = visualize_data.get_total_stats_from_lastfm(
+        username,
+        top_data["tracks"],
+        top_data["artists"],
+        top_data["albums"],
+        time_period
+    )
+    overall_stats_html = visualize_data.get_html_table(overall_stats)
 
-    # overall_stats = analyze_data.get_overall_stats_table_predefined(merged_tracks, merged_artists)
-    # overall_stats_html = visualize_data.get_html_table(overall_stats)
+    similar_artists = get_data.all_similar_artists(top_data["artists"]["name"])
+    similar_artists = similar_artists.head(10)
+    similar_artists_dict = similar_artists.to_dict(orient="records")
 
     session["graphs"] = graphs
     session["full_tables"] = full_tables
     session["short_tables"] = short_tables
-    # session["overall_stats"] = overall_stats_html
-    # session["tracks_table"] = tracks_table_html
-    # session["artists_table"] = artists_table_html
+    session["overall_stats"] = overall_stats_html
 
     return render_template(
         "lastfm_analysis.html",
         title=f"{username} Track Analysis",
         username=username,
-        time_period=time_period
+        time_period=time_period,
+        similar_artists=similar_artists_dict
     )
 
 @app.route("/lastfm_analysis/<username>/custom")
@@ -164,6 +170,9 @@ def lastfm_analysis_custom(username):
     ):
         return redirect(url_for("main_page"))
 
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
     custom_data = get_data.recent_tracks_by_custom_dates(username, start_date, end_date)
 
     if not validation.non_empty_dataframe(custom_data):
@@ -172,50 +181,67 @@ def lastfm_analysis_custom(username):
     graphs = {}
     full_tables = {}
     short_tables = {}
+    grouped_data = {}
+    custom_graphs = {}
 
     for data_type in ["tracks", "albums", "artists"]:
         match data_type:
             case "artists":
-                grouped_data = custom_data.groupby("artist", as_index=False).size()
+                grouped_data[data_type] = custom_data.groupby("artist", as_index=False).size()
             case "albums" | "tracks":
-                grouped_data = custom_data.groupby(
+                grouped_data[data_type] = custom_data.groupby(
                     [data_type[:-1], "artist"],
                     as_index=False
                 ).size()
 
-        grouped_data.rename(columns={"size": "scrobble count"}, inplace=True)
-        grouped_data.sort_values("scrobble count", ascending=False, inplace=True, ignore_index=True)
-        grouped_data.index += 1
+        grouped_data[data_type].rename(columns={"size": "scrobble count"}, inplace=True)
+        grouped_data[data_type].sort_values(
+            "scrobble count",
+            ascending=False,
+            inplace=True,
+            ignore_index=True
+            )
+        grouped_data[data_type].index += 1
 
-        full_tables[data_type] = visualize_data.get_html_table(grouped_data)
-        short_tables[data_type] = visualize_data.get_html_table(grouped_data, 15)
+        full_tables[data_type] = visualize_data.get_html_table(grouped_data[data_type])
+        short_tables[data_type] = visualize_data.get_html_table(grouped_data[data_type], 15)
 
-        script, div = visualize_data.get_top_scrobbles_chart(data_type, grouped_data, True)
+        script, div = visualize_data.get_top_scrobbles_chart(
+            data_type,
+            grouped_data[data_type],
+            True
+            )
 
         graphs[data_type] = {
             "script": script,
             "div": div
         }
 
-    start = date.fromisoformat(start_date)
-    end = date.fromisoformat(end_date)
     script, div = visualize_data.get_cumulative_scrobble_stats(custom_data, start, end)
-
-    
-
-    custom_graphs = {}
     custom_graphs["cumulative"] = {
         "script": script,
         "div": div
     }
+
+    overall_stats = visualize_data.get_total_stats_from_lastfm(
+        username,
+        grouped_data["tracks"],
+        grouped_data["artists"],
+        grouped_data["albums"],
+        start_date=start,
+        end_date=end
+        )
+    overall_stats_html = visualize_data.get_html_table(overall_stats)
+
+    similar_artists = get_data.all_similar_artists(grouped_data["artists"]["artist"])
+    similar_artists = similar_artists.head(10)
+    similar_artists_dict = similar_artists.to_dict(orient="records")
 
     session["graphs"] = graphs
     session["full_tables"] = full_tables
     session["short_tables"] = short_tables
     session["custom_graphs"] = custom_graphs
     session["overall_stats"] = overall_stats_html
-    # session["tracks_table"] = tracks_table_html
-    # session["artists_table"] = artists_table_html
 
     return render_template(
         "lastfm_analysis_custom.html",
@@ -223,7 +249,8 @@ def lastfm_analysis_custom(username):
         username=username,
         start_date=start_date,
         end_date=end_date,
-        time_period=time_period
+        time_period=time_period,
+        similar_artists=similar_artists_dict
     )
 
 @app.route("/lastfm_analysis/<username>/<time_period>/<data_type>")
@@ -268,7 +295,7 @@ def spotify_analysis():
     if not os.listdir(app.config["UPLOAD_FOLDER"]):
         return redirect(url_for("main_page"))
 
-    all_dataframes = data_processing.extended_history.parse_file_data(UPLOAD_FOLDER)
+    all_dataframes = extended_history.parse_file_data(UPLOAD_FOLDER)
     print(all_dataframes)
 
     if all_dataframes:

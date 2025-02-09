@@ -43,4 +43,4 @@ def get_all_artist_uris(username: str) -> None:
 
     with open("all_artists_uris.json", "w", encoding="utf-8") as fd:
         json.dump(line_data, fd, indent=2)
-        
+                                

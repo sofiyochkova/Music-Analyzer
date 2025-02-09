@@ -97,7 +97,7 @@ def get_tracks_data(uri_list: list[str | None]) -> pd.DataFrame:
     ]
 
     result_data = spotify.tracks(uri_list)
-        
+            
     search_results_clean = [
                 {
                     "name": result["name"],

@@ -43,25 +43,32 @@
         </div>
 
         <div class="row">
-            <!-- overall stats -> num of scrobbles, num_artists, average per day, popularity, idk else -->
-             {% if session.overall_stats %}
+            {% if session.overall_stats %}
                 <div class="col">
+                    <h3>Total data stats: </h3>
                     {{ session.overall_stats | safe }}
                 </div>
-             {% endif %}
+            {% endif %}
 
-            <!-- similar artists -->
-            <!-- <div class="col">{{ session.tracks_table | safe }}</div> -->
-
-            <!-- export similar artists to playlist; export scrobble data to sth? -->
-            <!-- <div class="col">{{ session.artists_table | safe }}</div> -->
+            {% if similar_artists %}
+                <div class="col">
+                    <h3>Similar artists:</h3>
+                    <table class="table table-striped align-middle">
+                        {% for artist in similar_artists %}
+                            <tr>
+                                <td><a target="_blank" href="{{ artist.url }}">{{ artist.name }}</a></td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            {% endif %}
         </div>
     </div>
 
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.2.min.js"></script>
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.3.min.js"></script>
 
     {% if session.graphs %}
         {% for name, graph in session.graphs.items() %}

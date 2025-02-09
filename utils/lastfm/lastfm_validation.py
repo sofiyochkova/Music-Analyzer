@@ -41,7 +41,7 @@ def check_if_user_exists(username: str) -> bool:
 
     return response.ok
 
-def get_registration_date(username: str) -> date | None:
+def get_registration_date(username: str) -> date:
     "Get the registration date of a user by username."
 
     params = {
@@ -54,6 +54,6 @@ def get_registration_date(username: str) -> date | None:
     response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
 
     if not check_lastfm_response(response):
-        return None
+        return date.today()
 
     return date.fromtimestamp(int(response.json()["user"]["registered"]["unixtime"]))

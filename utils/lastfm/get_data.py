@@ -173,10 +173,14 @@ def similar_artists(artist_name: str) -> set[tuple[str, str]]:
 
     return set(similar_artists_set)
 
-def all_similar_artists(artists: pd.Series, limit: int=10) -> pd.DataFrame:
+def all_similar_artists(artists: pd.Series, top_artist_limit: int=10) -> pd.DataFrame:
+    """Returns the top similar artists based on Last.fm data
+        given the top top_artist_limit most listened to artist during
+        a particular time period.
+    """
     similar_artists_set = set()
 
-    for artist in artists.head(limit):
+    for artist in artists.head(top_artist_limit):
         similar = similar_artists(artist)
         similar_artists_set.update(similar)
 
