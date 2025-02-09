@@ -25,7 +25,7 @@ from the root folder of the project.
 
 # TODO
 The project is unfortunately still not finished but I would like to implement
-more functionality in the near future:
+more functionalities in the near future:
 1. Write tests
 2. Spotify listening data support
 3. Find a way to avoid and handle Spotify rate limits
