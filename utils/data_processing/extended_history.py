@@ -13,13 +13,13 @@ def parse_file_data(upload_folder: str) -> pd.DataFrame:
     """
         Return a dataframe with all data in the uploads folder.
     """
-        
+                
     for filename in os.listdir(upload_folder):
         file_path = os.path.join(upload_folder, filename)
 
         dataframes = []
 
-        with open(file_path, "r") as fd:
+        with open(file_path, "r", encoding="utf-8") as fd:
             json_data = json.load(fd)
             selected_stats = [
                 {

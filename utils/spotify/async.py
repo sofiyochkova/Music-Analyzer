@@ -1,17 +1,42 @@
 """
-    This module contains functions that connect 
-    the received data from Last.fm with data from Spotify.
+    Asynchronous functions which collect
+    Spotify data using spotipy and Spotify's API.
 """
 
-import os
-import json
 import asyncio
 
 import pandas as pd
 
-from utils import spotipy_utils
+from utils.spotify import non_async
 
 WAIT_TIME = 0.5
+SEMAPHORE_NUMBER = 3
+
+async def get_artist_uri_async(artist_name: str) -> tuple[str, str | None]:
+    "Asynchronous version of get_artist_uri."
+
+    semaphore = asyncio.Semaphore(SEMAPHORE_NUMBER)
+
+    async with semaphore:
+        artist_uri = await asyncio.to_thread(non_async.get_artist_uri, artist_name)
+        await asyncio.sleep(WAIT_TIME)
+
+    return (artist_name, artist_uri)
+
+async def get_track_or_album_uri_async(
+        data_type: str,
+        name: str,
+        artist: str
+        ) -> tuple[str, str, str | None]:
+    "Asynchronous version of get_track_or_album_uri."
+
+    semaphore = asyncio.Semaphore(SEMAPHORE_NUMBER)
+
+    async with semaphore:
+        uri = await asyncio.to_thread(non_async.get_track_or_album_uri, data_type, name, artist)
+        await asyncio.sleep(WAIT_TIME)
+
+    return (name, artist, uri)
 
 async def get_spotify_track_data_by_lastfm_data(lastm_data: pd.DataFrame) \
 -> tuple[pd.DataFrame, list[tuple[str, str]]]:
@@ -23,12 +48,12 @@ async def get_spotify_track_data_by_lastfm_data(lastm_data: pd.DataFrame) \
     and a list of the names and artists which were not found
     """
 
-    semaphore = asyncio.Semaphore(5)
+    semaphore = asyncio.Semaphore(SEMAPHORE_NUMBER)
     uri_not_found: list[tuple[str, str]] = []
 
     async with semaphore:
         tasks = [
-            spotipy_utils.get_track_or_album_uri_async("track", row["name"], row["artist"])
+            get_track_or_album_uri_async("track", row["name"], row["artist"])
             for _, row in lastm_data.iterrows()
         ]
 
@@ -42,16 +67,15 @@ async def get_spotify_track_data_by_lastfm_data(lastm_data: pd.DataFrame) \
         tracks_uris = [
             uri
             for _, _, uri in tracks_names_and_uris
-            if uri is not None
         ]
 
         tracks_uris_split = [
-            tracks_uris[i:i + 50]
+            tracks_uris[i : i + 50]
             for i in range(0, len(tracks_uris), 50)
         ]
 
         tasks_data = [
-            spotipy_utils.get_data_async("tracks", uri_sublist)
+            get_data_async("tracks", uri_sublist)
             for uri_sublist in tracks_uris_split
         ]
 
@@ -77,11 +101,11 @@ async def get_spotify_artist_data_by_lastfm_data(lastfm_data: pd.DataFrame) \
     and a list of the names of artists which were not found
     """
 
-    semaphore = asyncio.Semaphore(5)
+    semaphore = asyncio.Semaphore(SEMAPHORE_NUMBER)
 
     async with semaphore:
         tasks = [
-            spotipy_utils.get_artist_uri_async(row["name"])
+            get_artist_uri_async(row["name"])
             for _, row in lastfm_data.iterrows()
         ]
 
@@ -89,7 +113,7 @@ async def get_spotify_artist_data_by_lastfm_data(lastfm_data: pd.DataFrame) \
         await asyncio.sleep(WAIT_TIME)
 
         uri_not_found: list[str] = []
-        tracks_uris = []
+        tracks_uris: list[str | None] = []
 
         for artist, uri in tracks_artists_and_uris:
             if uri is None:
@@ -100,16 +124,15 @@ async def get_spotify_artist_data_by_lastfm_data(lastfm_data: pd.DataFrame) \
         tracks_uris = [
             uri
             for _, uri in tracks_artists_and_uris
-            if uri is not None
         ]
 
         tracks_uris_split = [
-            tracks_uris[i:i + 50]
+            tracks_uris[i : i + 50]
             for i in range(0, len(tracks_uris), 50)
         ]
 
         tasks_data = [
-            spotipy_utils.get_data_async("artists", uri_sublist)
+            get_data_async("artists", uri_sublist)
             for uri_sublist in tracks_uris_split
         ]
 
@@ -120,6 +143,26 @@ async def get_spotify_artist_data_by_lastfm_data(lastfm_data: pd.DataFrame) \
     merged = lastfm_data.merge(artists_spotify[["name", "popularity"]], on="name", how="left")
 
     return merged, uri_not_found
+
+async def get_data_async(data_type: str, uri_list: list[str | None]) -> pd.DataFrame:
+    """Takes a list of uri codes and returns a dataframe with their data.
+    
+    Keyword arguments:
+    - data_type -- tracks | albums | artists
+    - uri_list -- list of uri codes
+    """
+
+    data_function = {
+        "tracks": non_async.get_tracks_data,
+        "artists": non_async.get_artists_data, "albums": non_async.get_albums_data
+        }
+
+    semaphore = asyncio.Semaphore(5)
+
+    async with semaphore:
+        result = await asyncio.to_thread(data_function[data_type], uri_list)
+        await asyncio.sleep(WAIT_TIME)
+    return result
 
 async def collect_data(tracks_data, artists_data):
     "Collect both tracks and artists data asynchronously"
@@ -132,58 +175,3 @@ async def collect_data(tracks_data, artists_data):
     tracks_all, artists_all = await asyncio.gather(*tasks)
 
     return tracks_all, artists_all
-
-def get_spotify_track_data_from_file(lastfm_data: pd.DataFrame) -> pd.DataFrame:
-    "Read the uri codes of tracks from a file"
-    with open(os.path.join("static", "all_tracks_uris.json"), "r", encoding="utf-8") as fd:
-        tracks_uris = json.load(fd)
-
-        needed_uris = [
-            (name, artist, uri)
-            for name, artist, uri in tracks_uris
-            for _, row in lastfm_data.iterrows()
-            if name == row["name"].lower() and artist.lower() == row["artist"].lower()
-        ]
-
-        print(needed_uris)
-
-    return pd.DataFrame()
-
-def get_overall_stats_table(
-        tracks_data: pd.DataFrame,
-        artists_data: pd.DataFrame
-    ) -> pd.Series:
-    """Return a Series of overall listening data
-    
-    Keyword arguments:
-    - tracks_data -- collected track data from Spotify and Last.fm
-    - artists_data -- collected artist data from Spotify and Last.fm
-    """
-
-    all_scrobbles = tracks_data["scrobble_count"].sum()
-    all_artists = artists_data["scrobble_count"].sum()
-    tracks_data["full_duration"] = tracks_data["scrobble_count"] * tracks_data["duration"].sum()
-
-    tracks_data["weighted_popularity"] = tracks_data["popularity"] * \
-        (tracks_data["playcount"] / all_scrobbles)
-    artists_data["weighted_popularity"] = artists_data["popularity"] * \
-        (artists_data["playcount"] / all_scrobbles)
-
-    average_track_popularity = tracks_data["weighted_popularity"].mean()
-    average_artist_popularity = artists_data["weighted_popularity"].mean()
-
-    stats = [
-        all_scrobbles,
-        all_artists,
-        average_track_popularity,
-        average_artist_popularity
-    ]
-
-    indexes = [
-        "Number of scrobbles",
-        "Number of artists",
-        "Average track popularity",
-        "Average artist popularity"
-    ]
-
-    return pd.Series(data=stats, index=indexes)

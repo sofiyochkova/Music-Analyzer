@@ -1,16 +1,18 @@
 """
-    Contains all functions requiring Last.fm API calls.
+    Contains functions related to getting
+    data from Last.fm which is then going
+    to be visualized and processed.
 """
 
 import os
-from datetime import date, datetime
+from datetime import datetime
 
 import requests
 import dotenv
 import pandas as pd
-from flask import flash
 
 from utils import validation
+from utils.lastfm import lastfm_validation
 
 dotenv.load_dotenv()
 
@@ -18,41 +20,10 @@ REQUEST_TIMEOUT = 600
 LASTFM_API_KEY = os.getenv("LASTFM_API_KEY")
 ROOT_URL = "http://ws.audioscrobbler.com/2.0/"
 
-def check_if_user_exists(username: str) -> bool:
-    "Send a request to the Last.fm API checking if a user exists."
-
-    params = {
-        "method": "user.getinfo",
-        "user": username,
-        "api_key": LASTFM_API_KEY,
-        "format": "json"
-    }
-
-    response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
-
-    return response.ok
-
-def get_registration_date(username: str) -> date | None:
-    "Get the registration date of a user by username."
-
-    params = {
-        "method": "user.getinfo",
-        "user": username,
-        "api_key": LASTFM_API_KEY,
-        "format": "json"
-    }
-
-    response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
-
-    if not validation.check_lastfm_response(response):
-        return None
-
-    return date.fromtimestamp(int(response.json()["user"]["registered"]["unixtime"]))
-
-def get_top_data_predefined_period(
-    username: str,
-    data_type: str,
-    time_period: str
+def top_data_predefined_period(
+        username: str,
+        data_type: str,
+        time_period: str
     ) -> pd.DataFrame:
     """Returns a dataframe of the scrobbles
        based on a predefined time period.
@@ -62,7 +33,7 @@ def get_top_data_predefined_period(
     - data_type -- tracks | albums | artists
     - time_period -- 7day | 1month | 3month | 6month | 12month | overall
     """
-        
+
     if not (
         validation.username_exists_in_lastfm(username)
         and validation.check_data_type(data_type)
@@ -86,7 +57,7 @@ def get_top_data_predefined_period(
 
         response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
 
-        if not validation.check_lastfm_response(response):
+        if not lastfm_validation.check_lastfm_response(response):
             return pd.DataFrame()
 
         response_dict = response.json()
@@ -114,7 +85,7 @@ def get_top_data_predefined_period(
 
     return df_tracks
 
-def get_recent_tracks_by_custom_dates(
+def recent_tracks_by_custom_dates(
     username: str,
     start_date: str,
     end_date: str
@@ -153,7 +124,7 @@ def get_recent_tracks_by_custom_dates(
         response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
         response_dict = response.json()
 
-        if not validation.check_lastfm_response(response) \
+        if not lastfm_validation.check_lastfm_response(response) \
             or response_dict.get("recenttracks").get("@attr").get("total") == "0":
             return pd.DataFrame()
 
@@ -176,3 +147,63 @@ def get_recent_tracks_by_custom_dates(
         page += 1
 
     return pd.DataFrame(list_response)
+
+def similar_artists(artist_name: str) -> set[tuple[str, str]]:
+    "Return a set of similar artists based on a given artist name."
+
+    params = {
+        "method": "artist.getSimilar",
+        "artist": artist_name,
+        "api_key": LASTFM_API_KEY,
+        "format": "json"
+    }
+
+    response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
+
+    if not lastfm_validation.check_lastfm_response(response):
+        return set()
+
+    response_json = response.json()
+
+    similar_artists_set = (
+        (artist.get("name"), artist.get("url"))
+        for artist in response_json.get("similarartists").get("artist")
+        if float(artist.get("match")) > 0.7
+    )
+
+    return set(similar_artists_set)
+
+def all_similar_artists(artists: pd.Series, limit: int=10) -> pd.DataFrame:
+    similar_artists_set = set()
+
+    for artist in artists.head(limit):
+        similar = similar_artists(artist)
+        similar_artists_set.update(similar)
+
+    similar_artists_distinct = [
+        (name, url)
+        for name, url in similar_artists_set
+        if name.lower() not in list(map(lambda artist: artist.lower(), artists))
+    ]
+
+    return pd.DataFrame(similar_artists_distinct, columns=["name", "url"])
+
+def duration(name: str, artist: str) -> int:
+    "Gets duration by track name and artist from Last.fm in milliseconds"
+
+    params = {
+        "method": "track.getInfo",
+        "track": name,
+        "artist": artist,
+        "api_key": LASTFM_API_KEY,
+        "format": "json"
+    }
+
+    response = requests.get(ROOT_URL, params=params, timeout=REQUEST_TIMEOUT)
+
+    if not lastfm_validation.check_lastfm_response(response):
+        return 0
+
+    response_json = response.json()
+
+    return int(response_json["track"]["duration"])

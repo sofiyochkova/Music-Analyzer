@@ -30,7 +30,7 @@ def group_by_timeframe(df: pd.DataFrame, start_date: datetime, end_date: datetim
 
 def get_top_scrobbles_chart(
         data_type: str,
-        top_data: pd.DataFrame, 
+        top_data: pd.DataFrame,
         is_custom: bool,
         top_number: int=10
     ) -> tuple[str, str] | None:
@@ -48,7 +48,7 @@ def get_top_scrobbles_chart(
         return None
 
     top_data = top_data.head(top_number)
-    
+
     if is_custom:
         if data_type == "artists":
             x_range = top_data["artist"]
@@ -64,7 +64,7 @@ def get_top_scrobbles_chart(
             top_data = top_data.assign(
                 artist_and_name=top_data["artist"] + " - " + top_data["name"]
             )
-            x_range = top_data["artist_and_name"]     
+            x_range = top_data["artist_and_name"]
 
     source = ColumnDataSource(data={
             "name": x_range,
@@ -100,7 +100,11 @@ def get_html_table(dataframe: pd.DataFrame, top_items: int | None=None) -> str:
 
     return dataframe.to_html(classes=("table", "table-striped", "align-middle"))
 
-def get_cumulative_scrobble_stats(dataframe: pd.DataFrame, start_date: datetime, end_date: datetime) -> tuple[str, str]:
+def get_cumulative_scrobble_stats(
+    dataframe: pd.DataFrame,
+    start_date: datetime,
+    end_date: datetime
+    ) -> tuple[str, str]:
     """Return div and script of cumulative scrobbling data
     
     Keyword arguments:
@@ -122,20 +126,20 @@ def get_cumulative_scrobble_stats(dataframe: pd.DataFrame, start_date: datetime,
         )
 
     plot.line(
-        x=dataframe["time_group"],
-        top=dataframe[["artist"]].groupby(["artist"]).count(),
+        dataframe["time_group"],
+        dataframe.groupby(["artist"]).count(),
         width=0.5
         )
 
     plot.line(
-        x=dataframe["time_group"],
-        top=dataframe[["name"]].groupby(["name"]).count(),
+        dataframe["time_group"],
+        dataframe.groupby(["track"]).count(),
         width=0.5
         )
 
     plot.line(
-        x=dataframe["time_group"],
-        top=dataframe[["album"]].groupby(["album"]).count(),
+        dataframe["time_group"],
+        dataframe.groupby(["album"]).count(),
         width=0.5
         )
 

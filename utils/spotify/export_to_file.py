@@ -5,19 +5,19 @@
 
 import json
 
-import lastfm_utils
-import spotipy_utils
+from utils.spotify import non_async
+from utils.lastfm import get_data
 
 def get_all_track_uris(username: str) -> None:
     "Dumps the uri codes of all listened to tracks into a json file"
-    all_data = lastfm_utils.get_top_data_predefined_period(username, "tracks", "overall")
+    all_data = get_data.top_data_predefined_period(username, "tracks", "overall")
     line_data: list[dict[str, str | None]] = []
 
     line_data = [
         {
             "name": name,
             "artist": artist,
-            "uri": spotipy_utils.get_track_or_album_uri("track", name, artist)
+            "uri": non_async.get_track_or_album_uri("track", name, artist)
         }
         for _, row in all_data.iterrows()
         if (name := row["name"]) and (artist := row["artist"])
@@ -29,13 +29,13 @@ def get_all_track_uris(username: str) -> None:
 def get_all_artist_uris(username: str) -> None:
     "Dumps the uri codes of all listened to artists into a json file"
 
-    all_data = lastfm_utils.get_top_data_predefined_period(username, "artists", "overall")
+    all_data = get_data.top_data_predefined_period(username, "artists", "overall")
     line_data: list[dict[str, str | None]] = []
 
     line_data = [
         {
             "name": name,
-            "uri": spotipy_utils.get_artist_uri(name)
+            "uri": non_async.get_artist_uri(name)
         }
         for _, row in all_data.iterrows()
         if (name := row["name"])
@@ -43,3 +43,4 @@ def get_all_artist_uris(username: str) -> None:
 
     with open("all_artists_uris.json", "w", encoding="utf-8") as fd:
         json.dump(line_data, fd, indent=2)
+        

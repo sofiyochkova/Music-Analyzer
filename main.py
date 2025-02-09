@@ -16,8 +16,9 @@ from flask import Flask, render_template, url_for, request, redirect, session
 from werkzeug.utils import secure_filename
 from flask_session.__init__ import Session #type: ignore
 
-from utils import visualize_data, validation, analyze_data, lastfm_utils
-from utils import extended_history
+from utils import validation
+from utils.lastfm import get_data, lastfm_validation
+from utils.data_processing import analyze_data, visualize_data
 
 app = Flask(__name__)
 
@@ -57,7 +58,7 @@ def validate_data():
     time_period = request.form["time_period"]
 
     if not (
-        lastfm_utils.check_if_user_exists(username)
+        lastfm_validation.check_if_user_exists(username)
         and validation.valid_time_period(time_period)
     ):
         return redirect(url_for("main_page"))
@@ -101,7 +102,7 @@ def lastfm_analysis_predefined(username: str, time_period: str):
     short_tables = {}
 
     for data_type in ["tracks", "albums", "artists"]:
-        top_data = lastfm_utils.get_top_data_predefined_period(username, data_type, time_period)
+        top_data = get_data.top_data_predefined_period(username, data_type, time_period)
 
         if not validation.non_empty_dataframe(top_data):
             break
@@ -156,7 +157,7 @@ def lastfm_analysis_custom(username):
     ):
         return redirect(url_for("main_page"))
 
-    custom_data = lastfm_utils.get_recent_tracks_by_custom_dates(username, start_date, end_date)
+    custom_data = get_data.recent_tracks_by_custom_dates(username, start_date, end_date)
 
     if not validation.non_empty_dataframe(custom_data):
         return render_template(
@@ -200,11 +201,11 @@ def lastfm_analysis_custom(username):
     end = datetime.fromisoformat(end_date)
     script, div = visualize_data.get_cumulative_scrobble_stats(custom_data, start, end)
 
-    # custom_graphs = {}
-    # custom_graphs["cumulative"] = {
-    #     "script": script,
-    #     "div": div
-    # }
+    custom_graphs = {}
+    custom_graphs["cumulative"] = {
+        "script": script,
+        "div": div
+    }
 
     session["graphs"] = graphs
     session["full_tables"] = full_tables
@@ -254,18 +255,18 @@ def validate_files():
 
     for file in files:
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
     return url_for("spotify_analysis")
 
 @app.route("/spotify_analysis")
 def spotify_analysis():
     "Visualize spotify data based on files"
-    
+
     if not os.listdir(app.config["UPLOAD_FOLDER"]):
         return redirect(url_for("main_page"))
 
-    all_dataframes = extended_history.parse_file_data(UPLOAD_FOLDER)
+    all_dataframes = data_processing.extended_history.parse_file_data(UPLOAD_FOLDER)
     print(all_dataframes)
 
     if all_dataframes:

@@ -9,7 +9,7 @@ from flask import flash
 import requests
 import pandas as pd
 
-from utils import lastfm_utils
+from utils.lastfm import lastfm_validation
 
 def request_method_is_post(request_method: str) -> bool:
     "Checks if the request method is POST."
@@ -29,7 +29,7 @@ def non_empty_field(field_name: str, field_value: str) -> bool:
 
 def username_exists_in_lastfm(username: str) -> bool:
     "Checks if a username is valid."
-    if not lastfm_utils.check_if_user_exists(username):
+    if not lastfm_validation.check_if_user_exists(username):
         flash(f"Last.fm username {username} not found!")
         return False
 
@@ -61,14 +61,16 @@ def valid_date_type(start_date: str, end_date: str) -> bool:
 
 def valid_date_intervals(username: str, start_date: str, end_date: str):
     "Checks if the dates are valid time intervals."
-    registration_date = lastfm_utils.get_registration_date(username)
+
+    registration_date = lastfm_validation.get_registration_date(username)
+
     start = date.fromisoformat(start_date)
     end = date.fromisoformat(end_date)
 
     if not registration_date:
         flash("Registration date was not received!")
         return False
-
+        
     if end < start:
         flash("End date cannot be before start date!")
         return False
@@ -87,20 +89,6 @@ def is_file_extension_json(filename: str) -> bool:
     "Checks the file extension of a file given its filename."
     if not ('.' in filename and filename.rsplit('.', 1)[1].lower() == "json"):
         flash(f"Invalid filename: {filename}")
-        return False
-
-    return True
-
-def check_lastfm_response(response: requests.Response) -> bool:
-    "Checks if a response from Last.fm is valid."
-    try:
-        response_dict = response.json()
-    except requests.exceptions.JSONDecodeError:
-        flash("API is down right now...")
-        return False
-
-    if "error" in response_dict.keys():
-        flash("The Last.fm API encountered an error: " + response_dict.get("message"))
         return False
 
     return True
