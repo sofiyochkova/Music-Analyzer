@@ -18,7 +18,7 @@ from flask_session.__init__ import Session #type: ignore
 
 from utils import validation
 from utils.lastfm import get_data, lastfm_validation
-from utils.data_processing import visualize_data
+from utils.data_processing import visualize_data, extended_history
 
 app = Flask(__name__)
 
@@ -51,7 +51,7 @@ def validate_data():
         return redirect(url_for("main_page"))
 
     for field in ["username", "time_period"]:
-        if not validation.non_empty_field(field, request.form[field]):
+        if not validation.non_empty_field(field, request.form.get(field)):
             return redirect(url_for("main_page"))
 
     username = request.form["username"]
@@ -64,8 +64,8 @@ def validate_data():
         return redirect(url_for("main_page"))
 
     if time_period == "custom":
-        start_date = request.form["start_date"]
-        end_date = request.form["end_date"]
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
 
         if not (
             validation.valid_date_type(start_date, end_date)
@@ -90,6 +90,7 @@ def validate_data():
 @app.route("/lastfm_analysis/<username>/<time_period>")
 def lastfm_analysis_predefined(username: str, time_period: str):
     "Last.fm data visualization for a specific time period."
+
     if not (
         validation.username_exists_in_lastfm(username)
         and validation.valid_time_period(time_period)
@@ -123,9 +124,7 @@ def lastfm_analysis_predefined(username: str, time_period: str):
 
     overall_stats = visualize_data.get_total_stats_from_lastfm(
         username,
-        top_data["tracks"],
-        top_data["artists"],
-        top_data["albums"],
+        top_data,
         time_period
     )
     overall_stats_html = visualize_data.get_html_table(overall_stats)
@@ -151,11 +150,9 @@ def lastfm_analysis_predefined(username: str, time_period: str):
 def lastfm_analysis_custom(username):
     "Last.fm data for a custom time frame - from start_date to end_date"
 
-    time_period = request.args.get("time_period")
-
     if not (
         validation.username_exists_in_lastfm(username) \
-        and time_period == "custom"
+        and request.args.get("time_period") == "custom"
     ):
         return url_for("main_page")
 
@@ -169,9 +166,6 @@ def lastfm_analysis_custom(username):
         and validation.valid_date_intervals(username, start_date, end_date)
     ):
         return redirect(url_for("main_page"))
-
-    start = date.fromisoformat(start_date)
-    end = date.fromisoformat(end_date)
 
     custom_data = get_data.recent_tracks_by_custom_dates(username, start_date, end_date)
 
@@ -217,7 +211,11 @@ def lastfm_analysis_custom(username):
             "div": div
         }
 
-    script, div = visualize_data.get_cumulative_scrobble_stats(custom_data, start, end)
+    script, div = visualize_data.get_cumulative_scrobble_stats(
+        custom_data,
+        date.fromisoformat(start_date),
+        date.fromisoformat(end_date)
+        )
     custom_graphs["cumulative"] = {
         "script": script,
         "div": div
@@ -225,17 +223,15 @@ def lastfm_analysis_custom(username):
 
     overall_stats = visualize_data.get_total_stats_from_lastfm(
         username,
-        grouped_data["tracks"],
-        grouped_data["artists"],
-        grouped_data["albums"],
-        start_date=start,
-        end_date=end
+        grouped_data,
+        start_date=date.fromisoformat(start_date),
+        end_date=date.fromisoformat(end_date)
         )
     overall_stats_html = visualize_data.get_html_table(overall_stats)
 
-    similar_artists = get_data.all_similar_artists(grouped_data["artists"]["artist"])
-    similar_artists = similar_artists.head(10)
-    similar_artists_dict = similar_artists.to_dict(orient="records")
+    similar_artists_dict = get_data.all_similar_artists(grouped_data["artists"]["artist"]) \
+    .head(10) \
+    .to_dict(orient="records")
 
     session["graphs"] = graphs
     session["full_tables"] = full_tables
@@ -249,7 +245,7 @@ def lastfm_analysis_custom(username):
         username=username,
         start_date=start_date,
         end_date=end_date,
-        time_period=time_period,
+        time_period=request.args.get("time_period"),
         similar_artists=similar_artists_dict
     )
 
@@ -298,6 +294,7 @@ def spotify_analysis():
     all_dataframes = extended_history.parse_file_data(UPLOAD_FOLDER)
     print(all_dataframes)
 
-    if all_dataframes:
-        return render_template("spotify_analysis.html")
-app.run(debug=True)
+    return render_template("spotify_analysis.html")
+
+if __name__ == "__main__":
+    app.run(debug=True)

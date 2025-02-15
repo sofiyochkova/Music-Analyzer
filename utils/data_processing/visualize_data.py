@@ -164,22 +164,33 @@ def get_cumulative_scrobble_stats(
 
 def get_total_stats_from_lastfm(
         username: str,
-        tracks_data: pd.DataFrame,
-        artists_data: pd.DataFrame,
-        albums_data: pd.DataFrame,
+        lastfm_data: dict[str, pd.DataFrame],
         time_period: str | None=None,
         start_date: datetime | None=None,
         end_date: datetime | None=None,
     ) -> pd.DataFrame:
-    "Return a Series of overall stats only from lastfm data."
-    all_scrobbles = tracks_data["scrobble count"].sum()
-    all_tracks = len(tracks_data.index)
-    all_artists = len(artists_data.index)
-    all_albums = len(albums_data.index)
+    """Return a Series of overall stats only from lastfm data.
+    
+    Keyword arguments:
+    - username -- the lastfm user
+    - lastfm_data -- a dict containing dataframes of tracks, artists
+    and albums data under the corresponding keys.
+    - time_period - 7day | 1month | 6month | 12month | overall | custom
+    - start_date (optional) - start date if time_period is custom
+    - end_date (optional) - start date if time_period is custom
+    """
 
+    all_scrobbles = lastfm_data["tracks"]["scrobble count"].sum()
+
+    all_tracks = len(lastfm_data["tracks"].index)
+    all_artists = len(lastfm_data["artists"].index)
+    all_albums = len(lastfm_data["albums"].index)
+
+    days_count = 0
+    
     if start_date and end_date:
         days_count = (end_date - start_date).days
-        
+
     if time_period:
         match time_period:
             case "7day":
@@ -192,7 +203,7 @@ def get_total_stats_from_lastfm(
                 registration_date = lastfm_validation.get_registration_date(username)
                 days_count = (date.today() - registration_date).days
 
-    if not days_count:
+    if days_count == 0:
         return pd.DataFrame()
 
     average_scrobbles_per_day = all_scrobbles / days_count

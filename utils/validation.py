@@ -6,7 +6,6 @@
 from datetime import date
 
 from flask import flash
-import requests
 import pandas as pd
 
 from utils.lastfm import lastfm_validation
@@ -82,7 +81,7 @@ def valid_date_intervals(username: str, start_date: str, end_date: str):
     if end > date.today():
         flash(f"End date {end_date} cannot be in the future!")
         return False
-                                
+
     return True
 
 def is_file_extension_json(filename: str) -> bool:
