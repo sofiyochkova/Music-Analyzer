@@ -1,0 +1,10 @@
+.env
+just_testing/
+.venv/
+__pycache__/spotipy_functions.cpython-312.pyc
+other/
+*cache*
+flask_session/
+testing.py
+static/all_artists_uris.json
+static/all_tracks_uris.json

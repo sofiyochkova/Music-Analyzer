@@ -1,0 +1,46 @@
+{% extends "base_template.html" %}
+
+{% block style %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='main_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+{% endblock %}
+
+{% block content %}
+    <h1>Processing Data for user {{ username }}...</h1>
+    <p>Current Page: <span id="current-page">0</span></p>
+
+    <div id="progress-container">
+        <div id="progress-bar">0%</div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        function updateProgress() {
+            fetch("/progress")
+                .then(response => response.json())
+                .then(data =>
+                {
+                    document.getElementById("progress-bar").style.width = data.progress + "%";
+                    document.getElementById("progress-bar").textContent = data.progress + "%";
+                    document.getElementById("current-page").textContent = data.current_page;
+
+                    if(data.status === "complete")
+                    {
+                        fetch("/process_data")
+                            .then(response => response.json())
+                            .then(result => {
+                                window.location.href = result.redirect_url;
+                            });
+                    }
+                    else
+                    {
+                        setTimeout(updateProgress, 1000);
+                    }
+                });
+        }
+
+        updateProgress();
+        fetch("/process_data");
+    </script>
+{% endblock %}
