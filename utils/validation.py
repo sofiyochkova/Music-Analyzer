@@ -5,7 +5,7 @@
 
 from datetime import date
 
-from flask import flash
+from flask import flash, Request
 import pandas as pd
 
 from utils.lastfm import lastfm_validation
@@ -86,7 +86,7 @@ def valid_date_intervals(username: str, start_date: str, end_date: str):
 
 def is_file_extension_json(filename: str) -> bool:
     "Checks the file extension of a file given its filename."
-    if not ('.' in filename and filename.rsplit('.', 1)[1].lower() == "json"):
+    if not ('.' in filename and filename.rsplit('.', 1)[-1].lower() == "json"):
         flash(f"Invalid filename: {filename}")
         return False
 
@@ -114,6 +114,15 @@ def check_spotify_data_type(data_type: str) -> bool:
 
     if data_type not in ["track", "album"]:
         flash("Invalid data type - should be track or album!")
+        return False
+
+    return True
+
+def filelist_is_not_empty(request_files: Request) -> bool:
+    "Check if list of uploaded files is not empty."
+
+    if "file" not in request_files.files or not request_files.files.getlist("file"):
+        flash("List of files is empty!")
         return False
 
     return True

@@ -49,9 +49,9 @@
 
             <div class="col">
                 <p>Upload Spotify user data here: </p>
-                <form action="/validate_files" method="POST" enctype="multipart/form-data">
+                <form action="/spotify_analysis" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <input type="file" required class="form-control-file" id="json_files" accept="application/json" multiple>
+                        <input name="file" type="file" required class="form-control-file" id="json_files" accept="application/json" multiple>
                     </div>
                     <input class="btn" type="submit" value="Submit">
                 </form>

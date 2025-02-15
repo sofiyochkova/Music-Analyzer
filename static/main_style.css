@@ -65,3 +65,8 @@ input[type="submit"]:hover, .btn:hover
 {
     margin: 30px;
 }
+
+table thead tr th
+{
+    text-align: left;
+}

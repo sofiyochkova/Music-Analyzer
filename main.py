@@ -13,7 +13,6 @@ import os
 from datetime import date
 
 from flask import Flask, render_template, url_for, request, redirect, session
-from werkzeug.utils import secure_filename
 from flask_session.__init__ import Session #type: ignore
 
 from utils import validation
@@ -22,16 +21,11 @@ from utils.data_processing import visualize_data, extended_history
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 SESSION_FOLDER = os.path.join(os.getcwd(), "flask_session")
 
 if not os.path.exists(SESSION_FOLDER):
     os.makedirs(SESSION_FOLDER, exist_ok=True)
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["SESSION_FILE_DIR"] = SESSION_FOLDER
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_PERMANENT"] = False
@@ -265,11 +259,12 @@ def see_more(username, time_period, data_type):
         title=f"Full {data_type} table view"
     )
 
-@app.route("/validate_files", methods=["POST"])
-def validate_files():
-    "Check if uploaded files are valid"
+@app.route("/spotify_analysis", methods=["POST"])
+def spotify_analysis():
+    """Check if uploaded files are valid and then
+        show page with data from the files."""
 
-    if "file" not in request.files:
+    if not validation.filelist_is_not_empty(request):
         return redirect(url_for("main_page"))
 
     files = request.files.getlist("file")
@@ -278,23 +273,94 @@ def validate_files():
         if not validation.is_file_extension_json(file.filename):
             return redirect(url_for("main_page"))
 
-    for file in files:
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+    all_dataframes = extended_history.parse_file_data(files)
 
-    return url_for("spotify_analysis")
+    graphs = {}
+    full_tables = {}
+    short_tables = {}
+    grouped_data = {}
+    custom_graphs = {}
 
-@app.route("/spotify_analysis")
-def spotify_analysis():
-    "Visualize spotify data based on files"
+    for data_type in ["tracks", "albums", "artists"]:
+        match data_type:
+            case "artists":
+                grouped_data[data_type] = all_dataframes.groupby("artist", as_index=False).size()
+            case "albums" | "tracks":
+                grouped_data[data_type] = all_dataframes.groupby(
+                    [data_type[:-1], "artist"],
+                    as_index=False
+                ).size()
 
-    if not os.listdir(app.config["UPLOAD_FOLDER"]):
-        return redirect(url_for("main_page"))
+        grouped_data[data_type].rename(columns={"size": "scrobble count"}, inplace=True)
+        grouped_data[data_type].sort_values(
+            "scrobble count",
+            ascending=False,
+            inplace=True,
+            ignore_index=True
+            )
+        grouped_data[data_type].index += 1
 
-    all_dataframes = extended_history.parse_file_data(UPLOAD_FOLDER)
-    print(all_dataframes)
+        full_tables[data_type] = visualize_data.get_html_table(grouped_data[data_type])
+        short_tables[data_type] = visualize_data.get_html_table(grouped_data[data_type], 15)
 
-    return render_template("spotify_analysis.html")
+        script, div = visualize_data.get_top_scrobbles_chart(
+            data_type,
+            grouped_data[data_type],
+            True
+            )
+
+        graphs[data_type] = {
+            "script": script,
+            "div": div
+        }
+
+    print(all_dataframes.iloc[0]["scrobble_time"].date())
+    script, div = visualize_data.get_cumulative_scrobble_stats(
+        all_dataframes,
+        all_dataframes["scrobble_time"].min().date(),
+        all_dataframes["scrobble_time"].max().date()
+        )
+    custom_graphs["cumulative"] = {
+        "script": script,
+        "div": div
+    }
+
+    overall_stats = visualize_data.get_total_stats_from_lastfm(
+        "",
+        grouped_data,
+        start_date=all_dataframes["scrobble_time"].min().date(),
+        end_date=all_dataframes["scrobble_time"].max().date()
+        )
+    overall_stats_html = visualize_data.get_html_table(overall_stats)
+
+    similar_artists_dict = get_data.all_similar_artists(grouped_data["artists"]["artist"]) \
+    .head(10) \
+    .to_dict(orient="records")
+
+    session["graphs"] = graphs
+    session["full_tables"] = full_tables
+    session["short_tables"] = short_tables
+    session["custom_graphs"] = custom_graphs
+    session["overall_stats"] = overall_stats_html
+
+    return render_template("spotify_analysis.html",
+        start_date=all_dataframes["scrobble_time"].min().date(),
+        end_date=all_dataframes["scrobble_time"].max().date(),
+        similar_artists=similar_artists_dict
+        )
+
+@app.route("/spotify_analysis/<data_type>")
+def see_more_spotify(data_type):
+    "visualize the whole table"
+
+    full_table = session.get("full_tables", {}).get(data_type)
+
+    return render_template(
+        "see_more.html",
+        data_type=data_type,
+        full_table=full_table,
+        title=f"Full {data_type} table view"
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

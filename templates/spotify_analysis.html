@@ -1,13 +1,85 @@
 {% extends "base_template.html" %}
 
-{% block content %}
-<h1 class="text-center">Spotify stats based on Extended Listening History:</h1>
+{% block style %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='main_style.css') }}">
+{% endblock %}
 
-<div class="container">
-    <div class="row">
-        <div class="col"></div>
-        <div class="col"></div>
-        <div class="col"></div>
+{% block content %}
+    <button class="btn align-left"><a href="{{ url_for('main_page') }}">Home</a></button>
+    <div class="text-center">
+        <h1>Spotify stats for time period {{ start_date }} - {{ end_date }}: </h1>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <h3>{{ message }}</h3>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
     </div>
-</div>
+
+    <div class="container-fluid">
+        <div class="row">
+            {% for data_type, table in session.short_tables.items() %}
+                <div class="col">
+                    <h3>Top 15 {{ data_type.capitalize() }}</h3>
+                        {{ table | safe }}
+                    <button class="btn"><a href="{{ url_for('see_more_spotify', start_date=start_date, end_date=end_date, data_type=data_type)}}">See more</a></button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="row">
+            {% for name, graph in session.graphs.items() %}
+                <div class="col">
+                    {{ graph.div | safe }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="row">
+            {% if session.overall_stats %}
+                <div class="col">
+                    <h3>Total data stats: </h3>
+                    {{ session.overall_stats | safe }}
+                </div>
+            {% endif %}
+
+            {% for name, graph in session.custom_graphs.items() %}
+                <div class="col">
+                    {{ graph.div | safe }}
+                </div>
+            {% endfor %}
+
+            {% if similar_artists %}
+                <div class="col">
+                    <h3>Similar artists:</h3>
+                    <table class="table table-striped align-middle">
+                        {% for artist in similar_artists %}
+                            <tr>
+                                <td><a target="_blank" href="{{ artist.url }}">{{ artist.name }}</a></td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="row">
+            
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.3.min.js"></script>
+
+    {% for name, graph in session.graphs.items() %}
+        {{ graph.script | safe }}
+    {% endfor %}
+
+    {% for name, graph in session.custom_graphs.items() %}
+        {{ graph.script | safe }}
+    {% endfor %}
 {% endblock %}

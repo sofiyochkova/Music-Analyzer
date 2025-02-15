@@ -187,7 +187,7 @@ def get_total_stats_from_lastfm(
     all_albums = len(lastfm_data["albums"].index)
 
     days_count = 0
-    
+
     if start_date and end_date:
         days_count = (end_date - start_date).days
 
