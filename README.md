@@ -6,6 +6,9 @@ on a predefined time period (7 days, 1 month, 3 months, 6 months, 1 year or over
 or based on a given custom timeframe - from start date to end date, and visualizes
 it as charts and tables.
 
+The project also supports uploading .json files from Spotify's extended streaming history
+which you can get [here](https://www.spotify.com/uk/account/privacy/).
+
 ## Steps To Run
 1. Install Python, if you haven't (preferably Python 3.13)
 2. Clone the repository:
@@ -38,6 +41,5 @@ from the root folder of the project.
 The project is unfortunately still unfinished but I would like to implement
 more functions in the near future:
 1. Write tests
-2. Support for Spotify's Extended Listening History files
-3. Find a way to avoid and handle Spotify rate limits
-4. More graphs and charts based on data I couldn't find because of Spotify's API constraints.
+2. Find a way to avoid and handle Spotify rate limits
+3. More graphs and charts based on data I couldn't find because of Spotify's API constraints.
